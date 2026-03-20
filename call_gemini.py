@@ -2,7 +2,7 @@ import requests
 import os
 
 def resumir_em_gemini(texto):
-    api_key = os.environ.get('GEMINI_API_KEY')  # Defina nas secrets
+    api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
         raise ValueError("Faltando GEMINI_API_KEY no ambiente!")
 
@@ -18,4 +18,11 @@ def resumir_em_gemini(texto):
         "generationConfig": {"maxOutputTokens": 512}
     }
     r = requests.post(url, headers=headers, json=payload, timeout=15)
-    return r.json()['candidates'][0]['content']['parts'][0]['text']
+    try:
+        respj = r.json()
+    except Exception:
+        return "[ERRO: Gemini API retornou resposta inválida]"
+    if 'candidates' not in respj:
+        print("DEBUG - Gemini API response:", respj)
+        return "[ERRO na resposta do Gemini: " + str(respj.get('error', 'Sem detalhes')) + "]"
+    return respj['candidates'][0]['content']['parts'][0]['text']
