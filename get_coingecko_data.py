@@ -16,7 +16,12 @@ def get_top_coins(n=5):
         'change_24h': coin['price_change_percentage_24h'],
     } for coin in data]
 
+import requests
+
 def get_latest_news(n=3):
     url = 'https://api.coingecko.com/api/v3/status_updates'
     news = requests.get(url, timeout=10).json()
-    return [x['description'] for x in news['status_updates'][:n]]
+    if "status_updates" not in news:
+        print("DEBUG - CoinGecko API response:", news)
+        return ["[ERRO na resposta do CoinGecko]"]
+    return [x.get('description', '') for x in news['status_updates'][:n]]
