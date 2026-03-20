@@ -33,41 +33,40 @@ def resumir_em_gemini(titulos):
 
     noticias_list = [n.strip() for n in titulos.split('-') if n.strip()]
     
-    # Instrução Anti-Grok: Foco em lógica, métricas e tickers.
+    # Nova Instrução: Terminal de Dados. Proibido conectivos gramaticais longos.
     base_style = (
-        "English. Max 240 chars. Be a cold, data-driven quant. "
-        "Use specific tickers ($BTC, $SOL, $CELO). "
-        "NO adjectives like 'desperate', 'pathetic', or 'amazing'. "
-        "Focus on causality: If A happens, B is the result."
+        "English. Max 240 chars. Style: Bloomberg Terminal / Professional Quant. "
+        "Use Tickers ($BTC, $SOL). No 'In conclusion', no 'If this happens'. "
+        "Structure: [SIGNAL] vs [NOISE] or [DATA POINT] -> [IMPACT]."
     )
 
-    # --- POST 1: THE TAPE (Quant/Flow) ---
+    # --- POST 1: THE TAPE (Focus: Flow & Liquidity) ---
     random.shuffle(noticias_list)
     ctx1 = " | ".join(noticias_list)
     prompt_1 = (
-        f"{base_style} Analyze market flow: {ctx1}. "
-        "Focus on spot vs futures divergence or liquidity clusters. "
-        "Start with a raw data point. No hashtags."
+        f"{base_style} Identify the primary LIQUIDITY SIGNAL in these news: {ctx1}. "
+        "Format: SIGNAL: [Fact] | TARGET: [Price/Level] | VIBE: [Cynical Comment]. "
+        "Example: SIGNAL: $BTC spot absorption | TARGET: $72k | VIBE: Retail is sleeping."
     )
     post_1 = gemini_gerar_tweet(prompt_1).strip()
 
-    # --- POST 2: THE PLUMBING (Tech/Settlement) ---
+    # --- POST 2: THE PLUMBING (Focus: Infrastructure) ---
     random.shuffle(noticias_list)
     ctx2 = " | ".join(noticias_list)
     prompt_2 = (
-        f"{base_style} Analyze infrastructure: {ctx2}. "
-        "Identify specific protocol changes, RWA yields, or bridge TVL. "
-        "DO NOT start with Bitcoin. Focus on the settlement layer specs."
+        f"{base_style} Identify the structural ALPHA in: {ctx2}. "
+        "Format: INFRA: [Protocol] | EDGE: [Technical Change] | RISK: [Failure point]. "
+        "MANDATORY: Do not start with Bitcoin. Focus on $DOT, $CELO or $SOL specs."
     )
     post_2 = gemini_gerar_tweet(prompt_2).strip()
 
-    # --- POST 3: THE DECODING (Strategic Alpha) ---
+    # --- POST 3: THE DECODING (Focus: Macro/Sovereign) ---
     random.shuffle(noticias_list)
     ctx3 = " | ".join(noticias_list)
     prompt_3 = (
-        f"{base_style} Provide a strategic verdict on: {ctx3}. "
-        "Link news to macro sovereign shifts. Avoid generic buzzwords. "
-        "Final sentence MUST be: 'Logic dictates 42.' (Nothing more)."
+        f"{base_style} Decode the macro rot: {ctx3}. "
+        "Format: MACRO: [Trend] | DECAY: [What is failing] | VERDICT: 42. "
+        "Be short. Be aggressive. No fluff."
     )
     post_3 = gemini_gerar_tweet(prompt_3).strip()
 
