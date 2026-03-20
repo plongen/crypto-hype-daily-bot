@@ -1,3 +1,6 @@
+import os
+import requests
+
 def resumir_em_gemini(texto):
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
