@@ -1,8 +1,11 @@
-name: Run Crypto Hype Bot
+name: Crypto Hype Daily
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Já pronto para Node 24
 
 on:
   schedule:
-    - cron: '0 12 * * *'
+    - cron: '0 10 * * *'      # 10h da manhã horário de Brasília (UTC-3)
   workflow_dispatch:
 
 jobs:
@@ -10,14 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run Bot Script
-              - name: Run bot
+
+      - name: Run bot
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TWITTER_CONSUMER_KEY: ${{ secrets.TWITTER_CONSUMER_KEY }}
