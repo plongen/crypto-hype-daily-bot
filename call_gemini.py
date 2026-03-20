@@ -6,13 +6,13 @@ def gemini_gerar_tweet(prompt):
     if not api_key:
         raise ValueError("Faltando GEMINI_API_KEY no ambiente!")
     
-    # ALTERE AQUI: Use o nome exato aceito pela API
+    # 1. Use o modelo estável
     MODEL_NAME = "gemini-1.5-flash" 
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
-    # ... resto do código permanece igual
-
-
+    # 2. MUDE de v1beta para v1 na URL (isso resolve o 404 de modelos que saíram da beta)
+    url = f"https://generativelanguage.googleapis.com/v1/models/{MODEL_NAME}:generateContent?key={api_key}"
+    
+    # O restante do seu código (headers, payload, try/except) está perfeito.
 
     headers = {"Content-Type": "application/json"}
     payload = {
