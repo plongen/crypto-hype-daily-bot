@@ -1,4 +1,3 @@
-import json
 import os
 import requests
 import sys
@@ -20,9 +19,8 @@ def get_market_data():
             "&vs_currencies=usd&include_24hr_change=true",
             timeout=15
         )
-        if r.status_code == 200:
-            prices = r.json()
-            print(f"✓ Preços carregados: {len(prices)} moedas")
+        prices = r.json() if r.status_code == 200 else {}
+        print(f"✓ Preços carregados: {len(prices)} moedas")
     except Exception as e:
         print("Erro preços:", e)
 
@@ -39,44 +37,58 @@ def get_market_data():
     return {"prices": prices, "news": news}
 
 def generate_summary(data):
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
+    data_atual = datetime.now().strftime("%d.%m.%y")
     
     prices_text = ""
     for coin, info in data["prices"].items():
         price = info.get("usd", 0)
         change = info.get("usd_24h_change", 0)
-        emoji = "📈" if change > 0 else "📉"
+        emoji = "▲" if change > 0 else "▼"
         prices_text += f"{coin.upper()}: ${price:,.0f} {emoji} {change:+.1f}%\n"
 
-    news_text = "\n".join([f"- {item.get('title', 'Notícia')}" 
-                          for item in data["news"] if item])
+    news_text = "\n".join([f"- {item.get('title', 'Notícia')}" for item in data["news"] if item])
 
-    prompt = f"""Você é um trader crypto brasileiro direto e bem-humorado.
-Faça um resumo do que foi hype no crypto ontem ({yesterday}).
+    prompt = f"""Você é um analista crypto direto e técnico.
+Data: {data_atual}
 
-PREÇOS:
+Preços 24h:
 {prices_text}
 
-NOTÍCIAS / TÓPICOS:
+Notícias e tópicos recentes:
 {news_text}
 
-Escreva em português BR:
-- 1 tweet principal forte e chamativo (máx 280 caracteres) com emojis
-- Uma thread curta de 3 a 5 tweets explicando os principais narratives do dia.
+Gere um resumo diário em português brasileiro no seguinte formato exato:
 
-Tom: empolgado, mas realista. Linguagem natural de trader."""
+C42 ALPHA REPORT | {data_atual}
 
-    # === URL CORRIGIDA 2026 ===
+• On-chain Intel
+• Market Narrative  
+• The 42 Verdict
+
+Use linguagem técnica, objetiva e sem hype exagerado. 
+No final coloque sempre:
+Resumo diário do hype crypto no X • Feito com IA • Não é conselho financeiro."""
+
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
-    
+
     try:
-        resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=40)
+        resp = requests.post(
+            url, 
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.65,
+                    "maxOutputTokens": 500,
+                }
+            }, 
+            timeout=40
+        )
         resp.raise_for_status()
         result = resp.json()
         return result['candidates'][0]['content']['parts'][0]['text']
     except Exception as e:
         print("Erro Gemini:", str(e))
-        return "Erro ao gerar resumo com IA. Verifique a chave ou limite diário."
+        return "Erro ao gerar o relatório."
 
 def main():
     print("🚀 Crypto Hype Daily Bot Iniciado\n")
@@ -86,7 +98,7 @@ def main():
     print("="*80)
     print(summary)
     print("="*80)
-    print("\n✅ Resumo gerado com sucesso!")
+    print("\n✅ Resumo gerado!")
 
 if __name__ == "__main__":
     main()
