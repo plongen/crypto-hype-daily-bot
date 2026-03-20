@@ -30,6 +30,7 @@ def resumir_em_gemini(titulos):
     instrucao_global = (
         "Write in English. Be concise, technical, and high-impact (Alpha style). "
         "STRICT LIMIT: Max 260 characters per post. Do not include quotes, intros, or options. "
+        "CRITICAL: Respond with a single, continuous paragraph. No line breaks."
         "Start directly with the content. Use emojis sparingly."
     )
 
