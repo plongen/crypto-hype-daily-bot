@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
-    print("❌ GEMINI_API_KEY não encontrada nos Secrets!")
+    print("❌ GEMINI_API_KEY não encontrada!")
     sys.exit(1)
 
 def get_market_data():
@@ -55,10 +55,10 @@ Data: {data_atual}
 Preços 24h:
 {prices_text}
 
-Notícias e tópicos recentes:
+Notícias recentes:
 {news_text}
 
-Gere um resumo diário em português no seguinte formato exato:
+Gere um resumo diário em português usando exatamente este formato:
 
 C42 ALPHA REPORT | {data_atual}
 
@@ -66,40 +66,50 @@ C42 ALPHA REPORT | {data_atual}
 • Market Narrative
 • The 42 Verdict
 
-Seja objetivo, use tom técnico, evite hype exagerado.
+Use tom técnico, objetivo e sem exageros.
 No final coloque sempre:
 Resumo diário do hype crypto no X • Feito com IA • Não é conselho financeiro"""
 
-    # URL corrigida - testando gemini-1.5-flash-latest (mais estável em 2026)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
-    
-    try:
-        resp = requests.post(
-            url,
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.6,
-                    "maxOutputTokens": 600,
-                }
-            },
-            timeout=40
-        )
-        resp.raise_for_status()
-        result = resp.json()
-        return result['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        print("Erro Gemini:", str(e))
-        return f"Erro ao gerar relatório: {str(e)}"
+    # === MODELOS TESTADOS EM MARÇO 2026 ===
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-flash-latest"
+    ]
+
+    for model in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+        try:
+            print(f"Tentando modelo: {model}...")
+            resp = requests.post(
+                url,
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.6, "maxOutputTokens": 600}
+                },
+                timeout=35
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                print(f"✓ Sucesso com modelo {model}")
+                return result['candidates'][0]['content']['parts'][0]['text']
+            else:
+                print(f"  Falhou com {model} → {resp.status_code}")
+        except Exception as e:
+            print(f"  Erro com {model}: {str(e)}")
+            continue
+
+    return "❌ Todos os modelos do Gemini falharam."
 
 def main():
     print("🚀 Crypto Hype Daily Bot Iniciado\n")
     market = get_market_data()
     summary = generate_summary(market)
     
-    print("="*80)
+    print("="*85)
     print(summary)
-    print("="*80)
+    print("="*85)
     print("\n✅ Processo finalizado!")
 
 if __name__ == "__main__":
