@@ -20,8 +20,12 @@ import requests
 
 def get_latest_news(n=3):
     url = 'https://api.coingecko.com/api/v3/status_updates'
-    news = requests.get(url, timeout=10).json()
-    if "status_updates" not in news:
+    try:
+        news = requests.get(url, timeout=10).json()
+    except Exception as e:
+        print(f"Erro ao acessar CoinGecko: {e}")
+        return ["[ERRO ao acessar CoinGecko]"]
+    if not isinstance(news, dict) or "status_updates" not in news:
         print("DEBUG - CoinGecko API response:", news)
         return ["[ERRO na resposta do CoinGecko]"]
     return [x.get('description', '') for x in news['status_updates'][:n]]
