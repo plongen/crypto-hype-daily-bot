@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
-    print("❌ GEMINI_API_KEY não encontrada!")
+    print("❌ GEMINI_API_KEY não encontrada nos Secrets!")
     sys.exit(1)
 
 def get_market_data():
@@ -19,8 +19,9 @@ def get_market_data():
             "&vs_currencies=usd&include_24hr_change=true",
             timeout=15
         )
-        prices = r.json() if r.status_code == 200 else {}
-        print(f"✓ Preços carregados: {len(prices)} moedas")
+        if r.status_code == 200:
+            prices = r.json()
+            print(f"✓ Preços carregados: {len(prices)} moedas")
     except Exception as e:
         print("Erro preços:", e)
 
@@ -48,7 +49,7 @@ def generate_summary(data):
 
     news_text = "\n".join([f"- {item.get('title', 'Notícia')}" for item in data["news"] if item])
 
-    prompt = f"""Você é um analista crypto direto e técnico.
+    prompt = f"""Você é um analista crypto técnico e direto.
 Data: {data_atual}
 
 Preços 24h:
@@ -57,30 +58,31 @@ Preços 24h:
 Notícias e tópicos recentes:
 {news_text}
 
-Gere um resumo diário em português brasileiro no seguinte formato exato:
+Gere um resumo diário em português no seguinte formato exato:
 
 C42 ALPHA REPORT | {data_atual}
 
 • On-chain Intel
-• Market Narrative  
+• Market Narrative
 • The 42 Verdict
 
-Use linguagem técnica, objetiva e sem hype exagerado. 
+Seja objetivo, use tom técnico, evite hype exagerado.
 No final coloque sempre:
-Resumo diário do hype crypto no X • Feito com IA • Não é conselho financeiro."""
+Resumo diário do hype crypto no X • Feito com IA • Não é conselho financeiro"""
 
+    # URL corrigida - testando gemini-1.5-flash-latest (mais estável em 2026)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
-
+    
     try:
         resp = requests.post(
-            url, 
+            url,
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
-                    "temperature": 0.65,
-                    "maxOutputTokens": 500,
+                    "temperature": 0.6,
+                    "maxOutputTokens": 600,
                 }
-            }, 
+            },
             timeout=40
         )
         resp.raise_for_status()
@@ -88,7 +90,7 @@ Resumo diário do hype crypto no X • Feito com IA • Não é conselho finance
         return result['candidates'][0]['content']['parts'][0]['text']
     except Exception as e:
         print("Erro Gemini:", str(e))
-        return "Erro ao gerar o relatório."
+        return f"Erro ao gerar relatório: {str(e)}"
 
 def main():
     print("🚀 Crypto Hype Daily Bot Iniciado\n")
@@ -98,7 +100,7 @@ def main():
     print("="*80)
     print(summary)
     print("="*80)
-    print("\n✅ Resumo gerado!")
+    print("\n✅ Processo finalizado!")
 
 if __name__ == "__main__":
     main()
