@@ -28,30 +28,31 @@ def gemini_gerar_tweet(prompt):
     except:
         return "System error: Node disconnected."
 
+import base64
+
 def gemini_gerar_imagem(intel_report_text):
     """
-    Gera uma imagem 'Dark Macro Terminal' baseada no resumo do Intel Report.
-    A imagem é otimizada para o feed do X (16:9).
+    Versão corrigida para o endpoint de imagem.
     """
     api_key = os.environ.get('GEMINI_API_KEY')
-    # Endpoint específico para geração de imagem
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{IMAGE_MODEL}:generateImage?key={api_key}"
+    # Ajuste do modelo para a versão de produção estável
+    MODEL_IMG = "gemini-3-flash-image" 
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_IMG}:predict?key={api_key}"
     
-    # Cria o prompt visual baseado no texto gerado
     visual_prompt = (
-        f"A cinematic, ultra-detailed image for a crypto-macro analyst. Style: Dark, dystopian, "
-        f"high-tech Bloomberg Terminal screen. Focus: Overlapping data visualization, green holographic "
-        f"graphs, stylized tickers ($BTC, $SOL, $ETH) and abstract liquidity flow patterns. "
-        f"NO text visible on screen, just dense symbols. A subtle central motif should represent "
-        f"a stylized '42' or a 'key' breaking a digital chain. The mood must be cynical and professional, "
-        f"set in a shadowy, futuristic Wall Street war room. Otimizado para X, ratio 16:9."
+        "Ultra-detailed cinematic 16:9 image. A dark, futuristic Bloomberg Terminal "
+        "in a shadowy war room. Dystopian crypto-macro data visualizations, "
+        "holographic charts, glowing tickers like $BTC and $ETH. "
+        "Cyberpunk aesthetic, high contrast, professional cynical mood. No text."
     )
     
+    # Estrutura de payload para o modelo de imagem (Vertex/AI Studio style)
     payload = {
-        "requests": [{
-            "image_prompt": visual_prompt,
-            "aspect_ratio": "16:9" # Formato X
-        }]
+        "instances": [{"prompt": visual_prompt}],
+        "parameters": {
+            "sampleCount": 1,
+            "aspectRatio": "16:9"
+        }
     }
     
     try:
@@ -59,17 +60,17 @@ def gemini_gerar_imagem(intel_report_text):
         r.raise_for_status()
         respj = r.json()
         
-        # A imagem vem codificada em Base64
-        image_base64 = respj['image_bytes'][0]['base64']
+        # A resposta de imagem geralmente vem em 'predictions'
+        image_base64 = respj['predictions'][0]['bytesBase64Encoded']
         
-        # Salva a imagem localmente no GitHub Action
         with open("daily_intel.png", "wb") as f:
             f.write(base64.b64decode(image_base64))
-        print("🖼️ daily_intel.png gerada com sucesso!")
+        
+        print("🖼️ Imagem daily_intel.png gerada com sucesso!")
         return "daily_intel.png"
-    
     except Exception as e:
-        print(f"[ERRO Imagem]: {str(e)}")
+        # Se falhar, o bot continua apenas com o texto para não travar o processo
+        print(f"⚠️ Falha na imagem (Bot segue apenas com texto): {e}")
         return None
 
 def resumir_em_gemini(titulos):
