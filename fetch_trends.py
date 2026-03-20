@@ -1,7 +1,7 @@
 import requests
 import os
 
-def get_trending_news(max_items=20):
+def get_trending_news(max_items=10):
     api_key = os.environ.get('CRYPTOPANIC_API_KEY')
     if not api_key:
         raise Exception("Faltando CRYPTOPANIC_API_KEY no ambiente")
@@ -18,7 +18,6 @@ def get_trending_news(max_items=20):
     for item in data.get("results", [])[:max_items]:
         title = item.get("title", "")
         description = item.get("description", "")
-        # Apenas mantém o que tem título
         if title:
             items.append({"title": title, "description": description})
     return items
