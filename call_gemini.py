@@ -6,19 +6,23 @@ def gemini_gerar_tweet(prompt):
     if not api_key:
         raise ValueError("Faltando GEMINI_API_KEY no ambiente!")
     
-    # 1. Use o modelo estável
-    MODEL_NAME = "gemini-1.5-flash" 
+    # 1. ATUALIZE O MODELO (Nomes válidos em Março/2026)
+    # Opção A: "gemini-3.1-flash-lite-preview" (Ultra rápido, ótimo p/ Free Tier)
+    # Opção B: "gemini-2.5-flash" (Equilibrado e estável)
+    MODEL_NAME = "gemini-3.1-flash-lite-preview" 
     
-    # 2. MUDE de v1beta para v1 na URL (isso resolve o 404 de modelos que saíram da beta)
-    url = f"https://generativelanguage.googleapis.com/v1/models/{MODEL_NAME}:generateContent?key={api_key}"
+    # 2. USE O ENDPOINT v1beta PARA ACESSAR OS MODELOS MAIS NOVOS (PREVIEW)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
     
-    # O restante do seu código (headers, payload, try/except) está perfeito.
-
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 520}
+        "generationConfig": {
+            "maxOutputTokens": 300,
+            "temperature": 0.8 # Um pouco mais de "hype" para o Twitter
+        }
     }
+    # ... mantenha o restante do seu bloco try/except igual
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=20)
         respj = r.json()
