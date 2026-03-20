@@ -5,8 +5,15 @@ def gemini_gerar_tweet(prompt):
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
         raise ValueError("Faltando GEMINI_API_KEY no ambiente!")
-    MODEL_NAME = "gemini-2.5-flash"
+    
+    # ALTERE AQUI: Use o nome exato aceito pela API
+    MODEL_NAME = "gemini-1.5-flash" 
+    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
+    # ... resto do código permanece igual
+
+
+
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
