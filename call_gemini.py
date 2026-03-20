@@ -1,7 +1,7 @@
 import os
 import requests
 
-def resumir_em_gemini(texto):
+def resumir_em_gemini(titulos):
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
         raise ValueError("Faltando GEMINI_API_KEY no ambiente!")
@@ -10,22 +10,20 @@ def resumir_em_gemini(texto):
     headers = {"Content-Type": "application/json"}
 
     prompt = (
-        "Você é uma IA especialista em tendências CRIPTO e mercados. "
-        "Com base nas notícias e dados abaixo, gere uma THREAD do Twitter em português (do Brasil), focando especialmente nos temas QUENTES do momento – como DeFi, IA e criptoativos/padrões/protocolos citados (por exemplo: EC-8004, Ondo, Centrifuge, Chainlink, e outros projetos inquietos ou disruptivos). "
-        "Destaque oportunidades, riscos e sinais de hype. "
-        "Formate assim:\n\n"
-        "Tweet principal:\n<resumo bombástico com emojis e chamada de atenção>\n\n"
-        "Thread:\n1. <Tópico importante, detalhado e impactante, de preferência sobre DeFi ou IA>\n"
-        "2. <Outro destaque: menção a protocolos, EC-8004, projetos de tokenização, parcerias, on-chain, etc>\n"
-        "3. <Aprofundamento com nuances, possíveis riscos ou oportunidades dos temas>\n"
-        "4. <Extra: se houver, algo surpreendente do dia>\n\n"
-        "Evite links, números de tweet, datas e repetições. Escreva no melhor tom de 'analista cripto antenado'.\n\n"
-        f"DADOS PARA ANÁLISE:\n{texto}\n"
+        "Você é um analista cripto que monitora tendências e tecnologia. "
+        "Com base nos assuntos abaixo, escreva uma thread de Twitter em português (Brasil) usando este formato:\n\n"
+        "Tweet principal:\n<Resumo impactante e chamativo com emojis>\n"
+        "Thread:\n"
+        "1. <Tendência destaque: DeFi, IA, EC-8004, Ondo, Centrifuge, Chainlink, etc>\n"
+        "2. <Outro ponto quente do momento (expanda, analise e contextualize algum projeto ou sinal narrativo)>\n"
+        "3. <Análise extra: oportunidade/riscos, hype, algo relevante para investidores atentos>\n\n"
+        "Regras: SEM links e SEM datas. Nunca repita títulos. Sempre escreva pelo menos 3 tweets completos! Seja engajado e use linguagem cripto de analista. Os assuntos para análise são:\n\n"
+        f"{titulos}\n"
     )
 
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 1024}
+        "generationConfig": {"maxOutputTokens": 1500}
     }
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=20)
