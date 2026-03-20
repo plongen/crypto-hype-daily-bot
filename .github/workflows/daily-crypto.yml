@@ -1,5 +1,6 @@
 name: Crypto Hype Daily
-
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 on:
   schedule:
     - cron: '0 10 * * *'   # 10h da manhã (horário de Brasília)
