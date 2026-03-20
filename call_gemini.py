@@ -10,15 +10,16 @@ def resumir_em_gemini(titulos):
     headers = {"Content-Type": "application/json"}
 
     prompt = (
-        "Você é um analista cripto que monitora tendências e tecnologia. "
-        "Com base nos assuntos abaixo, escreva uma thread de Twitter em português (Brasil) usando este formato:\n\n"
-        "Tweet principal:\n<Resumo impactante e chamativo com emojis>\n"
+        "Você é um analista cripto que monitora tendências e tecnologia. Gere uma THREAD de Twitter em português (Brasil) com EXATAMENTE o formato abaixo. "
+        "Nunca responda com texto corrido, apenas complete os campos pedidos. "
+        "Lembre: obrigatoriamente sempre escreva pelo menos 4 tweets, preenchendo tudo.\n\n"
+        "Tweet principal:\n<Resumo impactante e chamativo com emojis>\n\n"
         "Thread:\n"
-        "1. <Tendência destaque: DeFi, IA, EC-8004, Ondo, Centrifuge, Chainlink, etc>\n"
-        "2. <Outro ponto quente do momento (expanda, analise e contextualize algum projeto ou sinal narrativo)>\n"
-        "3. <Análise extra: oportunidade/riscos, hype, algo relevante para investidores atentos>\n\n"
-        "Regras: SEM links e SEM datas. Nunca repita títulos. Sempre escreva pelo menos 3 tweets completos! Seja engajado e use linguagem cripto de analista. Os assuntos para análise são:\n\n"
-        f"{titulos}\n"
+        "1. <Tendência DeFi, IA, EC-8004, Ondo, Centrifuge, Chainlink, etc (em até 250 caracteres)>\n"
+        "2. <Outro ponto quente atual (expanda, analise, contextualize)>\n"
+        "3. <Insight final, visão ou oportunidade>\n\n"
+        "Proibido links ou datas. Seja engajado, linguagem de analista cripto, nunca repita apenas os títulos!\n\n"
+        f"As tendências do dia são:\n{titulos}\n"
     )
 
     payload = {
