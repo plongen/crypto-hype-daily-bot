@@ -3,9 +3,7 @@ from call_gemini import resumir_em_gemini
 from post_to_twitter import postar_no_x
 
 if __name__ == "__main__":
-    # Limite o input para garantir resposta do Gemini!
-    news_items = get_trending_news(max_items=5)
-    # Use apenas os títulos (mais curto e direto)
+    news_items = get_trending_news(max_items=4)
     titulos = ""
     for n in news_items:
         titulos += f"- {n['title']}\n"
