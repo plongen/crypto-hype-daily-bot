@@ -1,11 +1,11 @@
 name: Crypto Hype Daily
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Isso remove o warning de Node 20
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   schedule:
-    - cron: '0 10 * * *'     # 10h da manhã horário de Brasília
+    - cron: '0 10 * * *'      # Todo dia às 10h da manhã (horário de Brasília)
   workflow_dispatch:
 
 jobs:
