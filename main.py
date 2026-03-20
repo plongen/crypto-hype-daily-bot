@@ -3,101 +3,81 @@ import json
 from datetime import datetime, timedelta
 import os
 import requests
-from twscrape import API, gather
+import sys
 
 # ================== CONFIG ==================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")   # Vamos adicionar no GitHub Secrets
-BOT_USERNAME = "SeuBotAqui"                    # Apenas para log
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Queries para capturar o hype de ontem
-QUERIES = [
-    "crypto OR bitcoin OR btc OR ethereum OR eth OR solana OR sol (hype OR pumping OR narrative OR adoption OR moon OR ai agent) -filter:replies",
-    "(memecoin OR $PEPE OR $DOGE OR $HYPE OR $TAO) (pump OR moon OR viral)",
-    "crypto news OR adoption OR regulation since:2025-01-01"  # ajuste a data se quiser
-]
-
-async def get_yesterday_tweets():
-    api = API()
-    # Adicione contas se quiser (opcional e mais estável)
-    # await api.pool.add_account("user", "pass", "email", "emailpass")
-    
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    all_tweets = []
-    
-    for q in QUERIES:
-        tweets = await gather(api.search(q, limit=30, since=yesterday))
-        all_tweets.extend(tweets)
-    
-    # Remove duplicados e pega os mais relevantes
-    unique = {t.id: t for t in all_tweets}
-    sorted_tweets = sorted(unique.values(), key=lambda x: x.likeCount + x.retweetCount, reverse=True)[:50]
-    
-    return [{
-        "text": t.rawContent,
-        "user": t.user.username,
-        "likes": t.likeCount,
-        "retweets": t.retweetCount,
-        "date": t.date.strftime("%Y-%m-%d")
-    } for t in sorted_tweets]
+if not GEMINI_API_KEY:
+    print("❌ GEMINI_API_KEY não encontrada no Secrets!")
+    sys.exit(1)
 
 def get_prices_and_news():
-    # Preços
-    prices = requests.get(
-        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,xrp&vs_currencies=usd&include_24hr_change=true"
-    ).json()
-    
-    # Notícias free
-    news = requests.get("https://cryptocurrency.cv/api/news?limit=8").json()
+    try:
+        prices = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price?"
+            "ids=bitcoin,ethereum,solana,xrp,toncoin&vs_currencies=usd&include_24hr_change=true",
+            timeout=15
+        ).json()
+    except:
+        prices = {}
+
+    try:
+        news = requests.get("https://cryptocurrency.cv/api/news?limit=8", timeout=15).json()
+    except:
+        news = []
     
     return {"prices": prices, "news": news[:6]}
 
-def generate_summary_with_gemini(tweets, market):
+def generate_summary_with_gemini(market):
     yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y")
     
-    prompt = f"""Você é um analista crypto brasileiro direto, bem-humorado e sem enrolação.
-Crie um resumo ATRATIVO em português do Brasil do que foi o HYPE no X ontem ({yesterday_str}).
+    prompt = f"""Você é um analista crypto brasileiro direto e bem-humorado.
+Resuma em português BR o que provavelmente foi hype no crypto ontem ({yesterday_str}).
 
-Dados do mercado:
+Preços atuais + variação 24h:
 {json.dumps(market['prices'], indent=2)}
 
-Notícias principais:
+Principais notícias recentes:
 {json.dumps(market['news'], indent=2)}
 
-Top tweets / discussões quentes de ontem:
-{json.dumps(tweets[:15], indent=2)}
+Faça:
+- 1 tweet principal chamativo (máx 280 caracteres) com emojis
+- Uma thread curta de 3-4 tweets explicando os principais narratives.
 
-Estrutura:
-1. Um tweet principal (máx 280 caracteres) bem chamativo com emojis
-2. Uma thread curta (3-5 tweets) explicando os principais narratives do dia.
-
-Tom: empolgado mas realista, use linguagem de trader brasileiro.
-Não coloque links nem hashtags demais."""
+Tom: empolgado, realista, linguagem de trader brasileiro. Sem hashtags exageradas."""
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    response = requests.post(url, json={
-        "contents": [{"parts": [{"text": prompt}]}]
-    })
-    
     try:
-        return response.json()['candidates'][0]['content']['parts'][0]['text']
-    except:
-        return "Erro ao gerar resumo. Tente novamente amanhã."
+        response = requests.post(url, json={
+            "contents": [{"parts": [{"text": prompt}]}]
+        }, timeout=30)
+        
+        response.raise_for_status()
+        data = response.json()
+        text = data['candidates'][0]['content']['parts'][0]['text']
+        return text
+    except Exception as e:
+        print("❌ Erro ao chamar Gemini:", str(e))
+        if "429" in str(e):
+            print("Rate limit atingido. Tente amanhã.")
+        return "Erro ao gerar resumo com IA. Verifique a chave Gemini."
 
 async def main():
-    print("🔍 Buscando tweets de ontem...")
-    tweets = await get_yesterday_tweets()
+    print("🚀 Iniciando Crypto Hype Daily Bot...")
     
-    print("📊 Pegando preços e notícias...")
+    print("📊 Buscando preços e notícias...")
     market = get_prices_and_news()
     
-    print("🧠 Gerando resumo com IA...")
-    summary = generate_summary_with_gemini(tweets, market)
+    print("🧠 Gerando resumo com Gemini...")
+    summary = generate_summary_with_gemini(market)
     
-    print("\n=== RESUMO GERADO ===\n")
+    print("\n" + "="*50)
     print(summary)
+    print("="*50)
     
-    # Aqui depois adicionamos a postagem (twscrape também permite postar, mas exige conta logada)
+    # TODO: Adicionar postagem automática depois que estiver estável
 
 if __name__ == "__main__":
     asyncio.run(main())
