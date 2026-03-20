@@ -66,7 +66,8 @@ Escreva em português BR:
 
 Tom: empolgado, mas realista. Linguagem natural de trader."""
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # === URL CORRIGIDA 2026 ===
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
     
     try:
         resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=40)
@@ -75,7 +76,7 @@ Tom: empolgado, mas realista. Linguagem natural de trader."""
         return result['candidates'][0]['content']['parts'][0]['text']
     except Exception as e:
         print("Erro Gemini:", str(e))
-        return "Erro ao gerar resumo com IA."
+        return "Erro ao gerar resumo com IA. Verifique a chave ou limite diário."
 
 def main():
     print("🚀 Crypto Hype Daily Bot Iniciado\n")
