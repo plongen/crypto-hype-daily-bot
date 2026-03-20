@@ -1,9 +1,11 @@
 name: Crypto Hype Daily
+
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Remove o warning de Node 20
+
 on:
   schedule:
-    - cron: '0 10 * * *'   # 10h da manhã (horário de Brasília)
+    - cron: '0 10 * * *'     # 10h da manhã horário de Brasília
   workflow_dispatch:
 
 jobs:
@@ -11,16 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
-        run: |
-          pip install twscrape requests
-      
+        run: pip install requests
+
       - name: Run bot
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
