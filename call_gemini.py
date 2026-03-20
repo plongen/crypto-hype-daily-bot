@@ -26,49 +26,39 @@ def gemini_gerar_tweet(prompt):
         return f"[ERRO Gemini]: {e}"
 
 def resumir_em_gemini(titulos):
-    """
-    Gera três posts distintos em inglês para o @crypto42alpha, 
-    focando em diferentes camadas do mercado (Preço, Infra e Macro).
-    """
+    # Base comum de restrição
+    base = "English. Max 255 chars. No intros, no quotes. Be cynical and ultra-dense."
 
-    # Instrução mestre: Define o tom cínico, técnico e o limite de caracteres.
-    base_instruction = (
-        "Write in English. Max 260 characters. Professional, cynical, and ultra-dense. "
-        "NO introductory phrases like 'Here is...', NO quotes, NO repetitive hooks. "
-        "Directly address the data. Be a high-level crypto researcher."
+    # --- POST 1: THE TAPE (The Degenerate Trader) ---
+    # Foco em: Candles, Volume, Liquidity, Order flow.
+    prompt_1 = (
+        f"{base} Act as a cynical institutional trader. Focus ONLY on price action and 'the tape' from: {titulos}. "
+        "Use terms like: order flow, distribution, liquidity sweeps, funding rates. "
+        "DO NOT mention specific company names or tech protocols."
     )
+    post_1 = gemini_gerar_tweet(prompt_1).strip()
 
-    # --- POST 1: THE TAPE (Market Dynamics & Price Action) ---
-    prompt_tape = (
-        f"{base_instruction}\n"
-        f"DATA: {titulos}\n"
-        "TASK: Analyze the market 'tape' and institutional flow only. "
-        "Ignore specific bill names or tech specs. Focus on liquidity, momentum, and volume vibes. "
-        "Start with a raw, bold observation about current market behavior."
+    # --- POST 2: THE PLUMBING (The Core Dev) ---
+    # Foco em: Smart Contracts, L1/L2, APIs, Settlement, RWA.
+    # Bloqueamos palavras de preço para forçar o lado técnico.
+    prompt_2 = (
+        f"{base} Act as a senior protocol engineer. Focus ONLY on the tech and infrastructure from: {titulos}. "
+        "Use terms like: settlement layer, L1/L2, middleware, RWA tokenization, interoperability. "
+        "DO NOT mention price, BTC value, or 'market sentiment'. Focus on the 'how'."
     )
-    post_1 = gemini_gerar_tweet(prompt_tape).strip()
+    post_2 = gemini_gerar_tweet(prompt_2).strip()
 
-    # --- POST 2: THE PLUMBING (Tech & Infrastructure Alpha) ---
-    prompt_plumbing = (
-        f"{base_instruction}\n"
-        f"DATA: {titulos}\n"
-        "TASK: Ignore price/volatility. Focus EXCLUSIVELY on the infrastructure, RWA (Ondo, Centrifuge), "
-        "or regulatory 'plumbing' mentioned. Use developer-centric terminology (APIs, smart contracts, "
-        "settlement layers). Explain the 'how' behind the news."
+    # --- POST 3: THE DECODING (The Macro Philosopher) ---
+    # Foco em: Geopolitics, Petrodollar, The 'Big Picture', 42.
+    # Bloqueamos o vocabulário dos posts anteriores.
+    prompt_3 = (
+        f"{base} Act as a geopolitical strategist. Connect these dots to the global stage: {titulos}. "
+        "Focus on: petrodollars, sovereignty, macro-economic shifts, or systemic rot. "
+        "DO NOT repeat words like 'liquidity' or 'accumulation'. "
+        "MANDATORY: End with a clever, deep-thought reference to 42 being the answer."
     )
-    post_2 = gemini_gerar_tweet(prompt_plumbing).strip()
+    post_3 = gemini_gerar_tweet(prompt_3).strip()
 
-    # --- POST 3: THE DECODING (Geopolitical & Strategic Verdict) ---
-    prompt_decoding = (
-        f"{base_instruction}\n"
-        f"DATA: {titulos}\n"
-        "TASK: Connect these dots to a broader geopolitical or macro trend. Give a contrarian take "
-        "on what the retail crowd is missing. Be strategic. "
-        "MANDATORY: You must end with a clever, organic reference to '42' being the ultimate answer."
-    )
-    post_3 = gemini_gerar_tweet(prompt_decoding).strip()
-
-    # Retorno formatado para o seu "copia e cola" manual no console
     return (
         f"POST 1 (THE TAPE):\n{post_1}\n\n"
         f"POST 2 (THE PLUMBING):\n{post_2}\n\n"
