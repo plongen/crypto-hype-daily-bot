@@ -30,3 +30,7 @@ if __name__ == "__main__":
 
     # Se quiser manter a tentativa de postagem mesmo sabendo do erro:
     # postar_no_x(resumo)
+    # Ao final do main.py
+    with open("latest_post.txt", "w", encoding="utf-8") as f:
+        f.write(resumo)
+    print("📂 Conteúdo salvo em latest_post.txt para backup.")
