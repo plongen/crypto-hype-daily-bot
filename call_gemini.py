@@ -9,53 +9,64 @@ def gemini_gerar_tweet(prompt):
     
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 280, "temperature": 0.8} # Temp maior para variar o vocabulário
+        "generationConfig": {
+            "maxOutputTokens": 300, 
+            "temperature": 0.85 # Temperatura alta para evitar frases clichês
+        }
     }
     
     try:
         r = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=25)
         return r.json()['candidates'][0]['content']['parts'][0]['text']
     except:
-        return "Error generating content."
+        return "System error: Node disconnected."
 
 def resumir_em_gemini(titulos):
-    noticias = [n.strip() for n in titulos.split('-') if len(n.strip()) > 5]
+    # Limpeza e embaralhamento das notícias
+    noticias = [n.strip() for n in titulos.split('-') if len(n.strip()) > 8]
     random.shuffle(noticias)
 
-    # Dividimos as notícias em 3 grupos para garantir que os posts sejam diferentes
-    # Se tiver pouca notícia, a gente repete, mas a ordem garante o foco.
-    grupo1 = noticias[:min(3, len(noticias))]
-    grupo2 = noticias[min(3, len(noticias)):min(6, len(noticias))]
-    grupo3 = noticias[min(6, len(noticias)):] or noticias[:2] # Fallback se tiver poucas
+    # ISOLAMENTO DE DADOS: Cada post recebe um set diferente de notícias
+    # Isso impede fisicamente a repetição de tópicos entre os posts.
+    split = len(noticias) // 3
+    set1 = noticias[:split]
+    set2 = noticias[split:split*2]
+    set3 = noticias[split*2:]
 
-    base_style = "English. Max 240 chars. Bloomberg Terminal style. Cynical. Use $Tickers."
+    # Instrução de Estilo: O "Cínico de Wall Street"
+    base_style = (
+        "English. Max 260 chars. Style: Cynical, ultra-dense crypto-macro researcher. "
+        "NO hashtags, NO emojis, NO 'Here is'. Use $Tickers. "
+        "Focus on causality and hidden risks. Be cold and intellectual."
+    )
 
-    # --- POST 1: MARKET FLOW (Somente Grupo 1) ---
+    # --- POST 1: THE TAPE (Market Flow) ---
     prompt_1 = (
-        f"{base_style} ANALYZE ONLY THESE: {grupo1}. "
-        "FORMAT: [SIGNAL]: [Ticker/Fact] | [TARGET]: [Level] | [VIBE]: [Short comment]. "
-        "Focus on price/volume only."
+        f"{base_style} Analyze the market tape using ONLY: {set1}. "
+        "Focus on institutional traps, liquidity theft, and volume anomalies. "
+        "Start with a direct, aggressive observation."
     )
     post_1 = gemini_gerar_tweet(prompt_1).strip()
 
-    # --- POST 2: TECH/INFRA (Somente Grupo 2) ---
+    # --- POST 2: THE PLUMBING (Tech/Infra) ---
     prompt_2 = (
-        f"{base_style} ANALYZE ONLY THESE: {grupo2}. "
-        "FORMAT: [INFRA]: [Protocol] | [EDGE]: [Tech Spec] | [RISK]: [Failure point]. "
-        "No Bitcoin here. Focus on L1/L2/RWA."
+        f"{base_style} Analyze the protocol infrastructure using ONLY: {set2}. "
+        "Focus on L1/L2 wars, RWA settlement, and middleware decay. "
+        "Ignore Bitcoin price. Talk about the 'pipes' of the system."
     )
     post_2 = gemini_gerar_tweet(prompt_2).strip()
 
-    # --- POST 3: MACRO/VERDICT (Somente Grupo 3) ---
+    # --- POST 3: THE DECODING (Macro/Verdict) ---
     prompt_3 = (
-        f"{base_style} ANALYZE ONLY THESE: {grupo3}. "
-        "FORMAT: [MACRO]: [Trend] | [DECAY]: [Systemic flaw]. "
-        "MANDATORY END: 'Logic dictates 42.' (Nothing else)."
+        f"{base_style} Provide a strategic macro verdict using ONLY: {set3}. "
+        "Connect these points to sovereign risk or systemic collapse. "
+        "Final sentence must be: 'Logic dictates 42.' (Strictly that)."
     )
     post_3 = gemini_gerar_tweet(prompt_3).strip()
 
     return (
-        f"POST 1 (MARKET FLOW):\n{post_1}\n\n"
-        f"POST 2 (TECH/INFRA):\n{post_2}\n\n"
-        f"POST 3 (MACRO VERDICT):\n{post_3}\n"
+        f"🔥 @crypto42alpha - INTEL REPORT\n\n"
+        f"I (THE TAPE):\n{post_1}\n\n"
+        f"II (THE PLUMBING):\n{post_2}\n\n"
+        f"III (THE DECODING):\n{post_3}\n"
     )
