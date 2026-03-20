@@ -2,11 +2,13 @@ import requests
 import os
 
 def resumir_em_gemini(texto):
-    api_key = os.environ.get('GEMINI_API_KEY')
+    api_key = os.environ.get('GEMINI_API_KEY')  # Defina nas secrets
     if not api_key:
         raise ValueError("Faltando GEMINI_API_KEY no ambiente!")
 
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Troque para o modelo mais novo disponível para sua conta:
+    MODEL_NAME = "gemini-2.5-flash"  # ou "gemini-3.1-flash-lite-preview"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     prompt = (
         "Resuma o seguinte em português, estilo humano, tweetável e com emojis. "
