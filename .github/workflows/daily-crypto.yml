@@ -2,8 +2,8 @@ name: Crypto Hype Daily
 
 on:
   schedule:
-    - cron: '0 10 * * *'   # Todo dia às 10h (horário de Brasília = UTC-3)
-  workflow_dispatch:       # Permite rodar manualmente
+    - cron: '0 10 * * *'   # 10h da manhã (horário de Brasília)
+  workflow_dispatch:
 
 jobs:
   run-bot:
