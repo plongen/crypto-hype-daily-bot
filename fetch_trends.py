@@ -1,15 +1,12 @@
-import snscrape.modules.twitter as sntwitter
-from datetime import datetime, timedelta
+import requests
+import os
 
-def get_trending_tweets(keywords, since, until, max_tweets=50, lang="pt"):
-    query = "(" + " OR ".join(keywords) + f') lang:{lang} until:{until} since:{since}'
-    tweets = []
-    for i, tweet in enumerate(sntwitter.TwitterSearchScraper(query).get_items()):
-        if i >= max_tweets:
-            break
-        tweets.append({
-            'user': tweet.user.username,
-            'content': tweet.content,
-            'url': tweet.url
-        })
-    return tweets
+def get_trending_news(max_items=20):
+    api_key = os.environ.get('CRYPTOPANIC_API_KEY')
+    if not api_key:
+        raise Exception("Faltando CRYPTOPANIC_API_KEY no ambiente")
+    url = f'https://cryptopanic.com/api/v1/posts/?auth_token={api_key}&public=true'
+    r = requests.get(url, timeout=10).json()
+    # Extrai título/hype e url
+    return [{"title": item["title"], "url": item["url"]} for item in r.get("results", [])[:max_items]]
+
