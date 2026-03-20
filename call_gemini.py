@@ -4,74 +4,58 @@ import random
 
 def gemini_gerar_tweet(prompt):
     api_key = os.environ.get('GEMINI_API_KEY')
-    if not api_key:
-        raise ValueError("Missing GEMINI_API_KEY!")
-    
     MODEL_NAME = "gemini-3.1-flash-lite-preview" 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
     
-    headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "maxOutputTokens": 280, 
-            "temperature": 0.5 # Menor temperatura = mais foco em fatos, menos em "poesia"
-        }
+        "generationConfig": {"maxOutputTokens": 280, "temperature": 0.8} # Temp maior para variar o vocabulário
     }
     
     try:
-        r = requests.post(url, headers=headers, json=payload, timeout=25)
-        r.raise_for_status()
-        respj = r.json()
-        return respj['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        return f"[ERRO]: {str(e)}"
+        r = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=25)
+        return r.json()['candidates'][0]['content']['parts'][0]['text']
+    except:
+        return "Error generating content."
 
 def resumir_em_gemini(titulos):
-    if not titulos or len(titulos) < 20:
-        return "Insufficient data."
+    noticias = [n.strip() for n in titulos.split('-') if len(n.strip()) > 5]
+    random.shuffle(noticias)
 
-    noticias_list = [n.strip() for n in titulos.split('-') if n.strip()]
-    
-    # Nova Instrução: Terminal de Dados. Proibido conectivos gramaticais longos.
-    base_style = (
-        "English. Max 240 chars. Style: Bloomberg Terminal / Professional Quant. "
-        "Use Tickers ($BTC, $SOL). No 'In conclusion', no 'If this happens'. "
-        "Structure: [SIGNAL] vs [NOISE] or [DATA POINT] -> [IMPACT]."
-    )
+    # Dividimos as notícias em 3 grupos para garantir que os posts sejam diferentes
+    # Se tiver pouca notícia, a gente repete, mas a ordem garante o foco.
+    grupo1 = noticias[:min(3, len(noticias))]
+    grupo2 = noticias[min(3, len(noticias)):min(6, len(noticias))]
+    grupo3 = noticias[min(6, len(noticias)):] or noticias[:2] # Fallback se tiver poucas
 
-    # --- POST 1: THE TAPE (Focus: Flow & Liquidity) ---
-    random.shuffle(noticias_list)
-    ctx1 = " | ".join(noticias_list)
+    base_style = "English. Max 240 chars. Bloomberg Terminal style. Cynical. Use $Tickers."
+
+    # --- POST 1: MARKET FLOW (Somente Grupo 1) ---
     prompt_1 = (
-        f"{base_style} Identify the primary LIQUIDITY SIGNAL in these news: {ctx1}. "
-        "Format: SIGNAL: [Fact] | TARGET: [Price/Level] | VIBE: [Cynical Comment]. "
-        "Example: SIGNAL: $BTC spot absorption | TARGET: $72k | VIBE: Retail is sleeping."
+        f"{base_style} ANALYZE ONLY THESE: {grupo1}. "
+        "FORMAT: [SIGNAL]: [Ticker/Fact] | [TARGET]: [Level] | [VIBE]: [Short comment]. "
+        "Focus on price/volume only."
     )
     post_1 = gemini_gerar_tweet(prompt_1).strip()
 
-    # --- POST 2: THE PLUMBING (Focus: Infrastructure) ---
-    random.shuffle(noticias_list)
-    ctx2 = " | ".join(noticias_list)
+    # --- POST 2: TECH/INFRA (Somente Grupo 2) ---
     prompt_2 = (
-        f"{base_style} Identify the structural ALPHA in: {ctx2}. "
-        "Format: INFRA: [Protocol] | EDGE: [Technical Change] | RISK: [Failure point]. "
-        "MANDATORY: Do not start with Bitcoin. Focus on $DOT, $CELO or $SOL specs."
+        f"{base_style} ANALYZE ONLY THESE: {grupo2}. "
+        "FORMAT: [INFRA]: [Protocol] | [EDGE]: [Tech Spec] | [RISK]: [Failure point]. "
+        "No Bitcoin here. Focus on L1/L2/RWA."
     )
     post_2 = gemini_gerar_tweet(prompt_2).strip()
 
-    # --- POST 3: THE DECODING (Focus: Macro/Sovereign) ---
-    random.shuffle(noticias_list)
-    ctx3 = " | ".join(noticias_list)
+    # --- POST 3: MACRO/VERDICT (Somente Grupo 3) ---
     prompt_3 = (
-        f"{base_style} Decode the macro rot: {ctx3}. "
-        "Format: MACRO: [Trend] | DECAY: [What is failing] | VERDICT: 42. "
-        "Be short. Be aggressive. No fluff."
+        f"{base_style} ANALYZE ONLY THESE: {grupo3}. "
+        "FORMAT: [MACRO]: [Trend] | [DECAY]: [Systemic flaw]. "
+        "MANDATORY END: 'Logic dictates 42.' (Nothing else)."
     )
     post_3 = gemini_gerar_tweet(prompt_3).strip()
 
     return (
-        f"POST 1 (THE TAPE):\n{post_1}\n\n"
-        f"POST 2 (THE PLUMBING):\n{post_2}\n\n"
-        f"POST 3 (THE DECODING):\n{post_3}\n"
+        f"POST 1 (MARKET FLOW):\n{post_1}\n\n"
+        f"POST 2 (TECH/INFRA):\n{post_2}\n\n"
+        f"POST 3 (MACRO VERDICT):\n{post_3}\n"
     )
