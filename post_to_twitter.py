@@ -8,7 +8,7 @@ def postar_no_x(texto):
         "TWITTER_ACCESS_TOKEN",
         "TWITTER_ACCESS_TOKEN_SECRET"
     ]
-    # Checagem de variáveis
+    # Checa env
     for k in keys:
         if not os.environ.get(k):
             raise Exception("Faltam credenciais do Twitter nas variáveis de ambiente")
@@ -28,12 +28,12 @@ def postar_no_x(texto):
         print("Provavelmente sua conta X/Twitter não tem acesso 'Elevated' ou plano pago. Veja detalhes em https://developer.x.com/en/portal/product")
         print("\n📝 Copie e poste manualmente o texto abaixo no X/Twitter:")
         print("="*60)
-        print(texto if texto.strip() else "[Nada gerado pelo Gemini! Confira os logs ou aumente o contexto de entrada.]")
+        print(texto if texto.strip() else "[Nada gerado pelo Gemini! Veja logs ou tente de novo!]")
         print("="*60)
         return
     except Exception as e:
         print(f"[ERRO inesperado ao postar no X/Twitter]: {e}")
         print("\n📝 Copie e poste manualmente o texto abaixo no X/Twitter:")
         print("="*60)
-        print(texto if texto.strip() else "[Nada gerado pelo Gemini! Confira os logs ou aumente o contexto de entrada.]")
+        print(texto if texto.strip() else "[Nada gerado pelo Gemini! Veja logs ou tente de novo!]")
         print("="*60)
