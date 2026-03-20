@@ -13,4 +13,14 @@ def get_trending_news(max_items=20):
         data = resp.json()
     except Exception:
         raise Exception(f"Resposta inesperada da API CryptoPanic:\n{resp.text}")
-    return [{"title": item["title"], "url": item["url"]} for item in data.get("results", [])[:max_items]]
+
+    items = []
+    for item in data.get("results", [])[:max_items]:
+        title = item.get("title", "")
+        description = item.get("description", "")
+        # Adapte aqui o texto que será passado para a IA (pode incluir description)
+        if description:
+            items.append({"title": title, "description": description})
+        else:
+            items.append({"title": title})
+    return items
