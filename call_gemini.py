@@ -54,7 +54,8 @@ def resumir_em_gemini(titulos):
         f"You are a cold protocol archaeologist who reads blockchain settlement data like an autopsy. "
         f"Max 270 chars. No hashtags, no emojis, no intro. Use $Tickers. "
         f"Analyze ONLY this data: {set2}. "
-        f"Identify what the infrastructure reveals that prices haven't priced yet."
+        f"Identify what the infrastructure reveals that prices haven't priced yet. "
+        f"Never describe what happened — interpret what it means for who gets hurt next."  # <- linha nova
     )
 
     prompt_3 = (
