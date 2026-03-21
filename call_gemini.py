@@ -31,61 +31,61 @@ def gemini_gerar_tweet(prompt):
         return f"System error: Node disconnected. {str(e)}"
 
 def resumir_em_gemini(titulos):
-    """Gera o Intel Report com isolamento de dados e layout variado."""
-    # Limpeza e embaralhamento das notícias
     noticias = [n.strip() for n in titulos.split('-') if len(n.strip()) > 8]
-    if not noticias: 
-        return "Insufficient data stream."
+    if len(noticias) < 3:
+        return "Insufficient data stream. Need at least 3 signals."
+
     random.shuffle(noticias)
 
-    # ISOLAMENTO DE DADOS: Garante que cada post trate de um assunto único
-    split = len(noticias) // 3
-    set1 = noticias[:split]
-    set2 = noticias[split:split*2]
-    set3 = noticias[split*2:]
+    n = len(noticias)
+    set1 = noticias[:n//3]
+    set2 = noticias[n//3:(2*n)//3]
+    set3 = noticias[(2*n)//3:]
 
-    base_style = (
-        "English. Max 270 chars. Style: Cynical, ultra-dense crypto-macro researcher. "
-        "NO hashtags, NO emojis, NO 'Here is'. Use $Tickers. "
-        "Focus on causality and hidden risks. Be cold and intellectual."
+    # Cada post tem uma VOZ diferente — isso quebra o genérico
+    prompt_1 = (
+        f"You are a cynical ex-Goldman quant who lost faith in all institutions. "
+        f"Max 270 chars. No hashtags, no emojis, no intro. Use $Tickers. "
+        f"Analyze ONLY this data: {set1}. "
+        f"Find the institutional trap hidden in plain sight. Start mid-sentence, no warmup."
     )
 
-    # --- GERAÇÃO DOS TEXTOS ---
-    post_1 = gemini_gerar_tweet(
-        f"{base_style} Analyze the market tape using ONLY: {set1}. "
-        "Focus on institutional traps and liquidity theft. Start aggressive."
-    ).strip()
+    prompt_2 = (
+        f"You are a cold protocol archaeologist who reads blockchain settlement data like an autopsy. "
+        f"Max 270 chars. No hashtags, no emojis, no intro. Use $Tickers. "
+        f"Analyze ONLY this data: {set2}. "
+        f"Identify what the infrastructure reveals that prices haven't priced yet."
+    )
 
-    post_2 = gemini_gerar_tweet(
-        f"{base_style} Analyze the protocol infrastructure using ONLY: {set2}. "
-        "Ignore Bitcoin price. Talk about RWA/L1 settlement rails."
-    ).strip()
+    prompt_3 = (
+        f"You are a sovereign risk analyst who treats crypto as geopolitics by other means. "
+        f"Max 270 chars. No hashtags, no emojis, no intro. Use $Tickers. "
+        f"Analyze ONLY this data: {set3}. "
+        f"Connect to macro power dynamics. End exactly with: 'Logic dictates 42.'"
+    )
 
-    post_3 = gemini_gerar_tweet(
-        f"{base_style} Provide a strategic macro verdict using ONLY: {set3}. "
-        "Connect to sovereign risk. MANDATORY: End with 'Logic dictates 42.'"
-    ).strip()
+    post_1 = gemini_gerar_tweet(prompt_1).strip()
+    post_2 = gemini_gerar_tweet(prompt_2).strip()
+    post_3 = gemini_gerar_tweet(prompt_3).strip()
 
-    # --- VARIABILIDADE VISUAL (Anti-Pattern) ---
     headers = [
-        "🔥 @crypto42alpha - INTEL REPORT",
-        "📡 @crypto42alpha - SIGNAL DETECTED",
-        "📊 @crypto42alpha - MACRO DECODING",
-        "🧿 @crypto42alpha - THE 42 PROTOCOL"
+        "🔥 @crypto42alpha — INTEL REPORT",
+        "📡 @crypto42alpha — SIGNAL DETECTED",
+        "📊 @crypto42alpha — MACRO DECODING",
+        "🧿 @crypto42alpha — THE 42 PROTOCOL"
     ]
-    header = random.choice(headers)
 
-    # Seleciona um set de marcadores aleatório
-    bullets_set = [
+    bullets_options = [
         ("I", "II", "III"),
         ("01", "02", "03"),
-        ("[TAPE]", "[PLUMBING]", "[DECODING]"),
-        ("● ALPHA", "● INFRA", "● MACRO")
+        ("[TAPE]", "[PLUMBING]", "[VERDICT]"),
+        ("● ALPHA", "● INFRA", "● MACRO"),
     ]
-    b1, b2, b3 = random.choice(bullets_set)
 
-    # Montagem final do relatório
-    intel_report = (
+    header = random.choice(headers)
+    b1, b2, b3 = random.choice(bullets_options)
+
+    return (
         f"{header}\n\n"
         f"{b1}:\n{post_1}\n\n"
         f"{b2}:\n{post_2}\n\n"
