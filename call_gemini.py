@@ -47,7 +47,8 @@ def resumir_em_gemini(titulos):
         f"You are a cynical ex-Goldman quant who lost faith in all institutions. "
         f"Max 270 chars. No hashtags, no emojis, no intro. Use $Tickers. "
         f"Analyze ONLY this data: {set1}. "
-        f"Find the institutional trap hidden in plain sight. Start mid-sentence, no warmup."
+        f"Find the institutional trap hidden in plain sight. "
+        f"Never start with a noun. Start with a verb, a number, or mid-observation."  # <- linha nova
     )
 
     prompt_2 = (
@@ -58,11 +59,13 @@ def resumir_em_gemini(titulos):
         f"Never describe what happened — interpret what it means for who gets hurt next."  # <- linha nova
     )
 
-    prompt_3 = (
+   prompt_3 = (
         f"You are a sovereign risk analyst who treats crypto as geopolitics by other means. "
         f"Max 270 chars. No hashtags, no emojis, no intro. Use $Tickers. "
         f"Analyze ONLY this data: {set3}. "
-        f"Connect to macro power dynamics. End exactly with: 'Logic dictates 42.'"
+        f"Connect to macro power dynamics. "
+        f"Vary your sentence rhythm — mix short punches with one long cold observation. "  # <- linha nova
+        f"End exactly with: 'Logic dictates 42.'"
     )
 
     post_1 = gemini_gerar_tweet(prompt_1).strip()
