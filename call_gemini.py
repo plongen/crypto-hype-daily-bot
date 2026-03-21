@@ -1,13 +1,15 @@
 import os
 import requests
 import random
+import json
+import time
 
 # --- CONFIGURAÇÕES GERAIS ---
-TEXT_MODEL = "gemini-2.0-flash"
+# Usando o modelo flash estável para Março/2026
+TEXT_MODEL = "gemini-3.1-flash-lite-preview"
 
 def gemini_gerar_tweet(prompt, retries=2):
     """Gera o texto denso e cínico para o Intel Report."""
-    import time
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
         raise ValueError("Missing GEMINI_API_KEY in environment!")
@@ -17,35 +19,35 @@ def gemini_gerar_tweet(prompt, retries=2):
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "maxOutputTokens": 400,
+            "maxOutputTokens": 320,
             "temperature": 0.85
         }
     }
 
     for attempt in range(retries + 1):
         try:
-            r = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json=payload,
-                timeout=30
-            )
+            r = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=25)
             r.raise_for_status()
             return r.json()['candidates'][0]['content']['parts'][0]['text']
+        except requests.exceptions.HTTPError as e:
+            if r.status_code == 429:
+                wait = 15 * (attempt + 1)  # 15s, 30s, 45s
+                print(f"Rate limit hit. Waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            return f"System error: Node disconnected. {str(e)}"
         except Exception as e:
             if attempt < retries:
-                time.sleep(2)
+                time.sleep(3)
                 continue
-            return f"[NODE ERROR: {str(e)}]"
+            return f"System error: Node disconnected. {str(e)}"
 
 
 def resumir_em_gemini(titulos):
-    """Gera Intel Report com isolamento de dados, vozes distintas e anti-repetição temática."""
+    """Gera o Intel Report com isolamento de dados e layout variado."""
     noticias = [n.strip() for n in titulos.split('-') if len(n.strip()) > 8]
-
-    if len(noticias) < 3:
-        return "Insufficient data stream. Need at least 3 signals."
-
+    if not noticias:
+        return "Insufficient data stream."
     random.shuffle(noticias)
 
     n = len(noticias)
@@ -53,16 +55,17 @@ def resumir_em_gemini(titulos):
     set2 = noticias[n//3:(2*n)//3]
     set3 = noticias[(2*n)//3:]
 
-    prompt_1 = (
+    # Cada post com voz distinta — quebra o genérico
+    post_1 = gemini_gerar_tweet(
         f"You are a cynical ex-Goldman quant who lost faith in all institutions. "
         f"Max 270 chars. No hashtags, no emojis, no intro phrases. Use $Tickers. "
         f"Analyze ONLY this data: {set1}. "
         f"Find the institutional trap hidden in plain sight. "
         f"Never start with a noun. Start with a verb, a number, or mid-observation. "
         f"Output ONLY the analysis. Nothing else."
-    )
+    ).strip()
 
-    prompt_2 = (
+    post_2 = gemini_gerar_tweet(
         f"You are a cold protocol archaeologist who reads blockchain settlement data like an autopsy. "
         f"Max 270 chars. No hashtags, no emojis, no intro phrases. Use $Tickers. "
         f"Analyze ONLY this data: {set2}. "
@@ -70,9 +73,9 @@ def resumir_em_gemini(titulos):
         f"Never describe what happened — interpret what it means for who gets hurt next. "
         f"FORBIDDEN words in your output: liquidity, liquidation, exit. "
         f"Output ONLY the analysis. Nothing else."
-    )
+    ).strip()
 
-    prompt_3 = (
+    post_3 = gemini_gerar_tweet(
         f"You are a sovereign risk analyst who treats crypto as geopolitics by other means. "
         f"Max 270 chars. No hashtags, no emojis, no intro phrases. Use $Tickers. "
         f"Analyze ONLY this data: {set3}. "
@@ -81,32 +84,30 @@ def resumir_em_gemini(titulos):
         f"FORBIDDEN words in your output: liquidity, liquidation, institutional. "
         f"End exactly with: 'Logic dictates 42.' "
         f"Output ONLY the analysis. Nothing else."
-    )
+    ).strip()
 
-    post_1 = gemini_gerar_tweet(prompt_1).strip()
-    post_2 = gemini_gerar_tweet(prompt_2).strip()
-    post_3 = gemini_gerar_tweet(prompt_3).strip()
-
+    # Variabilidade visual (Anti-Pattern)
     headers = [
-        "🔥 @crypto42alpha — INTEL REPORT",
-        "📡 @crypto42alpha — SIGNAL DETECTED",
-        "📊 @crypto42alpha — MACRO DECODING",
-        "🧿 @crypto42alpha — THE 42 PROTOCOL"
+        "🔥 @crypto42alpha - INTEL REPORT",
+        "📡 @crypto42alpha - SIGNAL DETECTED",
+        "📊 @crypto42alpha - MACRO DECODING",
+        "🧿 @crypto42alpha - THE 42 PROTOCOL"
     ]
+    header = random.choice(headers)
 
-    bullets_options = [
+    bullets_set = [
         ("I", "II", "III"),
         ("01", "02", "03"),
-        ("[TAPE]", "[PLUMBING]", "[VERDICT]"),
-        ("● ALPHA", "● INFRA", "● MACRO"),
+        ("[TAPE]", "[PLUMBING]", "[DECODING]"),
+        ("● ALPHA", "● INFRA", "● MACRO")
     ]
+    b1, b2, b3 = random.choice(bullets_set)
 
-    header = random.choice(headers)
-    b1, b2, b3 = random.choice(bullets_options)
-
-    return (
+    intel_report = (
         f"{header}\n\n"
         f"{b1}:\n{post_1}\n\n"
         f"{b2}:\n{post_2}\n\n"
         f"{b3}:\n{post_3}\n"
     )
+
+    return intel_report
