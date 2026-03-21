@@ -70,11 +70,13 @@ def resumir_em_gemini(titulos):
         f"End with: 'Logic dictates 42.' Output ONLY analysis."
     ).strip()
 
-    # Post 4 - Citação Literária (usa as primeiras notícias como 'mood')
+    # --- FIXED: Post 4 - The Literary Echo (Now in English) ---
     post_4 = gemini_gerar_tweet(
-        f"Select a brief, devastating quote in English from a famous author (Nietzsche, Bukowski, Orwell, Kafka, or Machado de Assis) "
-        f"reflecting the greed or futility in these news: {noticias[:3]}. "
-        f"Format: 'Frase' — Autor. Max 200 chars. No intro/emojis."
+        f"Select a brief, devastating quote from a famous author (e.g., Nietzsche, Bukowski, Orwell, Kafka) "
+        f"that reflects the futility, greed, or the struggle for autonomy in these news: {noticias[:3]}. "
+        f"The quote MUST be in English. "
+        f"Format: 'Quote' — Author. "
+        f"Max 200 chars. No intro, no emojis. Output ONLY the quote and author."
     ).strip()
 
     # --- UI / Formatação ---
