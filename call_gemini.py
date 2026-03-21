@@ -72,7 +72,7 @@ def resumir_em_gemini(titulos):
 
     # Post 4 - Citação Literária (usa as primeiras notícias como 'mood')
     post_4 = gemini_gerar_tweet(
-        f"Select a brief, devastating quote in Portuguese from a famous author (Nietzsche, Bukowski, Orwell, Kafka, or Machado de Assis) "
+        f"Select a brief, devastating quote in English from a famous author (Nietzsche, Bukowski, Orwell, Kafka, or Machado de Assis) "
         f"reflecting the greed or futility in these news: {noticias[:3]}. "
         f"Format: 'Frase' — Autor. Max 200 chars. No intro/emojis."
     ).strip()
