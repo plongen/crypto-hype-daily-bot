@@ -6,15 +6,21 @@ import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# --- CONFIGURAÇÕES GERAIS ---
-# Model fallback chain — tries each in order until one works
+# ---------------------------------------------------------------------------
+# CONFIGURAÇÕES GERAIS
+# ---------------------------------------------------------------------------
+# Model fallback chain — the API uses full path format "models/xxx"
+# 404 = model name wrong or not available on your tier
+# 429 = quota exhausted → moves to next model
+# Run list_models.py to see exactly what's available on your API key.
 MODEL_FALLBACK_CHAIN = [
-    "gemini-1.5-flash",        # stable, widely available
-    "gemini-1.5-flash-8b",     # lighter, higher quota
-    "gemini-2.0-flash-lite",   # may be restricted on free tier
+    "gemini-2.5-flash",       # best quality, good quota
+    "gemini-2.0-flash",       # stable fallback
+    "gemini-2.0-flash-lite",  # lighter, higher RPM
+    "gemini-flash-latest",    # alias — always points to latest flash
 ]
 
-MAX_RETRIES = 3
+MAX_RETRIES = 2
 REQUEST_TIMEOUT = 30
 MAX_OUTPUT_TOKENS = 320
 
@@ -110,11 +116,10 @@ def _build_echo_prompt(sample: list) -> str:
 
 def _build_prompts(set1: list, set2: list, set3: list, sample: list) -> dict:
     return {
-        "tape": _build_single_prompt(set1, _pick_persona()),
+        "tape":     _build_single_prompt(set1, _pick_persona()),
         "plumbing": _build_single_prompt(set2, _pick_persona()),
         "decoding": _build_single_prompt(
-            set3,
-            _pick_persona(),
+            set3, _pick_persona(),
             extra_instruction="End your post with exactly: 'Logic dictates 42.'"
         ),
         "echo": _build_echo_prompt(sample),
@@ -122,22 +127,19 @@ def _build_prompts(set1: list, set2: list, set3: list, sample: list) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# API CALL — with model fallback chain + Retry-After support
+# API CALL — model fallback chain + Retry-After awareness
 # ---------------------------------------------------------------------------
 def _parse_retry_after(error_msg: str) -> float:
-    """Extracts retry delay in seconds from Gemini's error message."""
     match = re.search(r"retry in ([0-9.]+)s", error_msg)
-    if match:
-        return float(match.group(1))
-    return 0.0
+    return float(match.group(1)) if match else 0.0
 
 
 def _call_model(prompt: str, model: str) -> str | None:
     """
-    Makes a single attempt against one model.
+    Single attempt on one model.
     Returns text on success.
-    Returns None if quota/rate-limited (caller should try next model).
-    Raises on hard errors (4xx non-429, malformed response).
+    Returns None on 429 (quota) → caller should try next model.
+    Raises RuntimeError on hard errors (non-429 4xx, 5xx).
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -162,33 +164,35 @@ def _call_model(prompt: str, model: str) -> str | None:
         timeout=REQUEST_TIMEOUT,
     )
 
-    logger.info("Model %s — HTTP %s", model, r.status_code)
+    logger.info("Model %-30s HTTP %s", model, r.status_code)
 
     if r.ok:
         data = r.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]
 
-    # Parse error body
     try:
-        error_body = r.json()
-        error_msg = error_body.get("error", {}).get("message", r.text[:300])
+        error_msg = r.json().get("error", {}).get("message", r.text[:300])
     except Exception:
         error_msg = r.text[:300]
 
     if r.status_code == 429:
         retry_after = _parse_retry_after(error_msg)
-        logger.warning("Model %s quota/rate-limited. Retry-After: %.1fs", model, retry_after)
-        return None  # signal to try next model
+        logger.warning("429 on %s — quota exceeded. Retry-After: %.1fs. Trying next model.", model, retry_after)
+        return None  # try next model
 
-    # Other 4xx = hard error, no point retrying
+    if r.status_code == 404:
+        logger.warning("404 on %s — model not found, trying next.", model)
+        return None  # treat 404 same as quota: try next model
+
+    # All other errors: hard fail
     raise RuntimeError(f"HTTP {r.status_code} — {error_msg}")
 
 
 def gemini_gerar_tweet(prompt: str) -> str:
     """
-    Tries each model in MODEL_FALLBACK_CHAIN.
-    Falls back to the next model on 429.
-    Retries with exponential backoff on connection/timeout errors.
+    Iterates MODEL_FALLBACK_CHAIN.
+    On 429 or 404: moves to next model immediately.
+    On connection/timeout: retries with exponential backoff within same model.
     """
     for model in MODEL_FALLBACK_CHAIN:
         for attempt in range(MAX_RETRIES + 1):
@@ -196,30 +200,32 @@ def gemini_gerar_tweet(prompt: str) -> str:
                 result = _call_model(prompt, model)
                 if result is not None:
                     return result
-                # 429 on this model — skip to next model immediately
-                break
+                break  # 429 or 404 — skip to next model
 
             except (KeyError, IndexError):
-                logger.error("Malformed response from model %s", model)
+                logger.error("Malformed response from %s", model)
                 return "System error: Malformed response from node."
 
             except RuntimeError as e:
-                # Hard 4xx error
-                logger.error("Hard error on model %s: %s", model, e)
+                logger.error("Hard error on %s: %s", model, e)
                 return f"System error: {e}"
 
             except requests.exceptions.Timeout:
-                logger.warning("Timeout — model %s attempt %d/%d", model, attempt + 1, MAX_RETRIES + 1)
+                logger.warning("Timeout — %s attempt %d/%d", model, attempt + 1, MAX_RETRIES + 1)
 
             except requests.exceptions.RequestException as e:
-                logger.warning("Request error — model %s attempt %d/%d: %s", model, attempt + 1, MAX_RETRIES + 1, e)
+                logger.warning("Request error — %s attempt %d/%d: %s", model, attempt + 1, MAX_RETRIES + 1, e)
 
             if attempt < MAX_RETRIES:
                 wait = 2 ** attempt
-                logger.info("Retrying model %s in %ds...", model, wait)
+                logger.info("Retrying %s in %ds...", model, wait)
                 time.sleep(wait)
 
-    return "System error: All models exhausted. Check your Gemini quota at https://ai.dev/rate-limit"
+    return (
+        "System error: All models exhausted.\n"
+        "Run list_models.py to check available models, "
+        "or check quota at https://ai.dev/rate-limit"
+    )
 
 
 # ---------------------------------------------------------------------------
