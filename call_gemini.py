@@ -154,8 +154,12 @@ def _build_prompts(set1: list, set2: list, set3: list, sample: list) -> dict:
 # ---------------------------------------------------------------------------
 # OUTPUT CLEANUP
 # ---------------------------------------------------------------------------
-def _clean_output(text: str, max_chars: int = 270) -> str:
-    """Strips wrapper artifacts and cuts at the last complete sentence within limit."""
+def _clean_output(text: str, max_chars: int = 240) -> str:
+    """
+    Enforces max_chars by cutting at the last COMPLETE sentence.
+    A complete sentence ends with . ! or ? followed by space or end-of-string.
+    Never returns a truncated sentence.
+    """
     text = text.strip()
     # Remove wrapping quotes or backticks the model sometimes adds
     for ch in ('"', "'", "`"):
@@ -166,14 +170,24 @@ def _clean_output(text: str, max_chars: int = 270) -> str:
     if len(text) <= max_chars:
         return text
 
-    truncated = text[:max_chars]
-    # Try to cut at the last clean sentence boundary
-    for sep in (". ", "! ", "? "):
-        idx = truncated.rfind(sep)
-        if idx > max_chars // 2:
-            return truncated[:idx + 1]
+    # Find all complete sentence end positions within the limit
+    # A sentence ends at . ! ? when followed by space, newline, or end of string
+    candidates = []
+    for m in re.finditer(r"[.!?](?=\s|$)", text):
+        end = m.end()
+        if end <= max_chars:
+            candidates.append(end)
 
-    return truncated  # hard cut if no boundary found
+    if candidates:
+        # Take the longest complete sentence(s) that fit
+        return text[:candidates[-1]].strip()
+
+    # No complete sentence fits — hard cut at last word boundary
+    truncated = text[:max_chars]
+    last_space = truncated.rfind(" ")
+    if last_space > max_chars // 2:
+        return truncated[:last_space].strip() + "."
+    return truncated.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -342,3 +356,4 @@ def resumir_em_gemini(titulos: str) -> str:
         + b3 + ":\n" + results.get("decoding", "") + "\n\n"
         + b4 + ":\n" + results.get("echo", "")
     )
+
