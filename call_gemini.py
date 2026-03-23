@@ -90,6 +90,7 @@ def resumir_em_gemini(titulos):
         f"Analyze ONLY: {set1}. Find the institutional trap. "
         f"DO NOT summarize the headlines — extract the subtext and implication. "
         f"Start with a verb or number. "
+        f"FORBIDDEN words: liquidity, bullish, bearish, DYOR. "
         f"{limit}"
     ).strip()
 
@@ -112,7 +113,9 @@ def resumir_em_gemini(titulos):
 
     post_4 = gemini_gerar_tweet(
         f"You are a literary curator for people who lost faith in financial systems but not in language. "
-        f"Select one quote from: Nietzsche, Cioran, Borges, Kafka, Bukowski, Camus, Dostoevsky, or Orwell. "
+        f"Select one REAL, VERIFIABLE quote from: Nietzsche, Cioran, Borges, Kafka, Bukowski, Camus, Dostoevsky, or Orwell. "
+        f"CRITICAL: The quote must be something the author actually wrote — do NOT invent or paraphrase. "
+        f"If you are not 100% certain the quote is real, choose a different author whose quote you know for certain. "
         f"The quote must resonate with the SUBTEXT of these headlines — not the surface: {noticias[:3]}. "
         f"The quote must feel inevitable, not decorative. "
         f"The quote MUST be in English. "
