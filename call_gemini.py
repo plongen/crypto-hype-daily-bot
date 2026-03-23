@@ -101,7 +101,8 @@ def _build_single_prompt(news_set: list, persona: dict, extra_instruction: str =
         "ANALYZE ONLY THESE HEADLINES: " + str(news_set),
         "",
         "RULES:",
-        "- Max 270 characters total",
+        "- HARD LIMIT: 240 characters maximum. Count before you output.",
+        "- Write 2 complete sentences only. Each sentence must end with a period.",
         "- No hashtags, no emojis, no bullet points",
         "- No generic finance commentary — every sentence must earn its place",
         "- DO NOT repeat or paraphrase the headlines — extract the subtext, the implication, the trap",
@@ -111,7 +112,11 @@ def _build_single_prompt(news_set: list, persona: dict, extra_instruction: str =
     ]
     if extra_instruction:
         lines.append(extra_instruction)
-    lines.append("Think carefully before writing. Output ONLY the final post text. Nothing else.")
+    lines.append(
+        "BEFORE OUTPUTTING: count the characters in your response. "
+        "If it exceeds 240, rewrite shorter. "
+        "Output ONLY the final post text. No preamble, no explanation."
+    )
     return "\n".join(lines)
 
 
