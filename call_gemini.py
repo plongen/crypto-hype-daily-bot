@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# PERSONAS — each has a distinct philosophical voice and structural pattern
+# PERSONAS
 # ---------------------------------------------------------------------------
 PERSONAS = [
     {
@@ -115,7 +115,7 @@ def _build_prompts(set1: list, set2: list, set3: list, sample: list) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# API CALL
+# API CALL — robust error handling
 # ---------------------------------------------------------------------------
 def gemini_gerar_tweet(prompt: str, retries: int = MAX_RETRIES) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -134,6 +134,8 @@ def gemini_gerar_tweet(prompt: str, retries: int = MAX_RETRIES) -> str:
         },
     }
 
+    last_error = None
+
     for attempt in range(retries + 1):
         try:
             r = requests.post(
@@ -142,25 +144,54 @@ def gemini_gerar_tweet(prompt: str, retries: int = MAX_RETRIES) -> str:
                 json=payload,
                 timeout=REQUEST_TIMEOUT,
             )
-            r.raise_for_status()
-            return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+            # Log raw status for every attempt to aid debugging
+            logger.info("Attempt %d/%d — HTTP %s", attempt + 1, retries + 1, r.status_code)
+
+            # Try to parse error body regardless of status
+            if not r.ok:
+                try:
+                    error_body = r.json()
+                    error_msg = error_body.get("error", {}).get("message", r.text[:200])
+                except Exception:
+                    error_msg = r.text[:200]
+
+                logger.warning("HTTP %s error: %s", r.status_code, error_msg)
+
+                # Do not retry on client errors (4xx) — they won't fix themselves
+                if 400 <= r.status_code < 500:
+                    return f"System error: HTTP {r.status_code} — {error_msg}"
+
+                # 5xx: fall through to retry
+                last_error = f"HTTP {r.status_code}"
+
+            else:
+                # Success path
+                data = r.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+
         except (KeyError, IndexError) as e:
             logger.error("Unexpected API response structure: %s", e)
             return "System error: Malformed response from node."
-        except requests.exceptions.HTTPError as e:
-            status = e.response.status_code if e.response else "unknown"
-            logger.warning("HTTP %s on attempt %d/%d", status, attempt + 1, retries + 1)
-            if e.response is not None and 400 <= e.response.status_code < 500:
-                return f"System error: Client error {status}. Check API key/quota."
+
+        except requests.exceptions.ConnectionError as e:
+            logger.warning("Connection error on attempt %d/%d: %s", attempt + 1, retries + 1, e)
+            last_error = f"ConnectionError: {e}"
+
+        except requests.exceptions.Timeout:
+            logger.warning("Timeout on attempt %d/%d", attempt + 1, retries + 1)
+            last_error = "Timeout"
+
         except requests.exceptions.RequestException as e:
             logger.warning("Request failed on attempt %d/%d: %s", attempt + 1, retries + 1, e)
+            last_error = str(e)
 
         if attempt < retries:
-            wait = 2 ** attempt
+            wait = 2 ** attempt  # 1s, 2s, 4s
             logger.info("Retrying in %ds...", wait)
             time.sleep(wait)
 
-    return "System error: Node disconnected after max retries."
+    return f"System error: Node disconnected after {retries + 1} attempts. Last error: {last_error}"
 
 
 # ---------------------------------------------------------------------------
@@ -203,10 +234,6 @@ BULLET_SETS = [
 # MAIN
 # ---------------------------------------------------------------------------
 def resumir_em_gemini(titulos: str) -> str:
-    """
-    Generates the Intel Report with parallel Gemini calls,
-    rotating personas, and narrative-structured posts.
-    """
     noticias = _parse_noticias(titulos)
 
     if len(noticias) < 3:
@@ -230,18 +257,13 @@ def resumir_em_gemini(titulos: str) -> str:
                 logger.error("Failed to generate '%s': %s", key, e)
                 results[key] = f"Signal lost on {key.upper()} channel."
 
-    post_1 = results.get("tape", "")
-    post_2 = results.get("plumbing", "")
-    post_3 = results.get("decoding", "")
-    post_4 = results.get("echo", "")
-
     header = random.choice(HEADERS)
     b1, b2, b3, b4 = random.choice(BULLET_SETS)
 
     return (
         f"{header}\n\n"
-        f"{b1}:\n{post_1}\n\n"
-        f"{b2}:\n{post_2}\n\n"
-        f"{b3}:\n{post_3}\n\n"
-        f"{b4}:\n{post_4}"
+        f"{b1}:\n{results.get('tape', '')}\n\n"
+        f"{b2}:\n{results.get('plumbing', '')}\n\n"
+        f"{b3}:\n{results.get('decoding', '')}\n\n"
+        f"{b4}:\n{results.get('echo', '')}"
     )
