@@ -89,6 +89,8 @@ def resumir_em_gemini(titulos):
         f"You are a cynical ex-Goldman quant. No hashtags/emojis. "
         f"Analyze ONLY: {set1}. Find the institutional trap. "
         f"DO NOT summarize the headlines — extract the subtext and implication. "
+        f"IMPORTANT: find the single hidden thread connecting ALL these headlines. "
+        f"Do not treat each headline separately — synthesize them into one unified insight. "
         f"Start with a verb or number. "
         f"FORBIDDEN words: liquidity, bullish, bearish, DYOR. "
         f"{limit}"
@@ -98,6 +100,8 @@ def resumir_em_gemini(titulos):
         f"You are a protocol archaeologist. No hashtags/emojis. "
         f"Analyze ONLY: {set2}. Interpret what the infrastructure reveals and hides. "
         f"DO NOT summarize the headlines — extract the subtext and implication. "
+        f"IMPORTANT: find the single hidden thread connecting ALL these headlines. "
+        f"Do not treat each headline separately — synthesize them into one unified insight. "
         f"FORBIDDEN words: liquidity, liquidation, exit. "
         f"{limit}"
     ).strip()
@@ -106,6 +110,8 @@ def resumir_em_gemini(titulos):
         f"You are a sovereign risk analyst. No hashtags/emojis. "
         f"Analyze ONLY: {set3}. Connect to macro power dynamics. "
         f"DO NOT summarize the headlines — extract the subtext and implication. "
+        f"IMPORTANT: find the single hidden thread connecting ALL these headlines. "
+        f"Do not treat each headline separately — synthesize them into one unified insight. "
         f"FORBIDDEN words: liquidity, liquidation, institutional. "
         f"Your second sentence MUST end with: 'Logic dictates 42.' "
         f"{limit}"
@@ -152,4 +158,3 @@ def resumir_em_gemini(titulos):
         f"{b3}:\n{post_3}\n\n"
         f"{b4}:\n{post_4}"
     )
-
