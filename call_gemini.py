@@ -3,12 +3,19 @@ import requests
 import random
 import time
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- CONFIGURAÇÕES GERAIS ---
-TEXT_MODEL = "gemini-2.0-flash-lite"
+# Model fallback chain — tries each in order until one works
+MODEL_FALLBACK_CHAIN = [
+    "gemini-1.5-flash",        # stable, widely available
+    "gemini-1.5-flash-8b",     # lighter, higher quota
+    "gemini-2.0-flash-lite",   # may be restricted on free tier
+]
+
 MAX_RETRIES = 3
-REQUEST_TIMEOUT = 25
+REQUEST_TIMEOUT = 30
 MAX_OUTPUT_TOKENS = 320
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -115,16 +122,30 @@ def _build_prompts(set1: list, set2: list, set3: list, sample: list) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# API CALL — robust error handling
+# API CALL — with model fallback chain + Retry-After support
 # ---------------------------------------------------------------------------
-def gemini_gerar_tweet(prompt: str, retries: int = MAX_RETRIES) -> str:
+def _parse_retry_after(error_msg: str) -> float:
+    """Extracts retry delay in seconds from Gemini's error message."""
+    match = re.search(r"retry in ([0-9.]+)s", error_msg)
+    if match:
+        return float(match.group(1))
+    return 0.0
+
+
+def _call_model(prompt: str, model: str) -> str | None:
+    """
+    Makes a single attempt against one model.
+    Returns text on success.
+    Returns None if quota/rate-limited (caller should try next model).
+    Raises on hard errors (4xx non-429, malformed response).
+    """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("Missing GEMINI_API_KEY in environment!")
 
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{TEXT_MODEL}:generateContent?key={api_key}"
+        f"{model}:generateContent?key={api_key}"
     )
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -134,64 +155,71 @@ def gemini_gerar_tweet(prompt: str, retries: int = MAX_RETRIES) -> str:
         },
     }
 
-    last_error = None
+    r = requests.post(
+        url,
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=REQUEST_TIMEOUT,
+    )
 
-    for attempt in range(retries + 1):
-        try:
-            r = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json=payload,
-                timeout=REQUEST_TIMEOUT,
-            )
+    logger.info("Model %s — HTTP %s", model, r.status_code)
 
-            # Log raw status for every attempt to aid debugging
-            logger.info("Attempt %d/%d — HTTP %s", attempt + 1, retries + 1, r.status_code)
+    if r.ok:
+        data = r.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
 
-            # Try to parse error body regardless of status
-            if not r.ok:
-                try:
-                    error_body = r.json()
-                    error_msg = error_body.get("error", {}).get("message", r.text[:200])
-                except Exception:
-                    error_msg = r.text[:200]
+    # Parse error body
+    try:
+        error_body = r.json()
+        error_msg = error_body.get("error", {}).get("message", r.text[:300])
+    except Exception:
+        error_msg = r.text[:300]
 
-                logger.warning("HTTP %s error: %s", r.status_code, error_msg)
+    if r.status_code == 429:
+        retry_after = _parse_retry_after(error_msg)
+        logger.warning("Model %s quota/rate-limited. Retry-After: %.1fs", model, retry_after)
+        return None  # signal to try next model
 
-                # Do not retry on client errors (4xx) — they won't fix themselves
-                if 400 <= r.status_code < 500:
-                    return f"System error: HTTP {r.status_code} — {error_msg}"
+    # Other 4xx = hard error, no point retrying
+    raise RuntimeError(f"HTTP {r.status_code} — {error_msg}")
 
-                # 5xx: fall through to retry
-                last_error = f"HTTP {r.status_code}"
 
-            else:
-                # Success path
-                data = r.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+def gemini_gerar_tweet(prompt: str) -> str:
+    """
+    Tries each model in MODEL_FALLBACK_CHAIN.
+    Falls back to the next model on 429.
+    Retries with exponential backoff on connection/timeout errors.
+    """
+    for model in MODEL_FALLBACK_CHAIN:
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                result = _call_model(prompt, model)
+                if result is not None:
+                    return result
+                # 429 on this model — skip to next model immediately
+                break
 
-        except (KeyError, IndexError) as e:
-            logger.error("Unexpected API response structure: %s", e)
-            return "System error: Malformed response from node."
+            except (KeyError, IndexError):
+                logger.error("Malformed response from model %s", model)
+                return "System error: Malformed response from node."
 
-        except requests.exceptions.ConnectionError as e:
-            logger.warning("Connection error on attempt %d/%d: %s", attempt + 1, retries + 1, e)
-            last_error = f"ConnectionError: {e}"
+            except RuntimeError as e:
+                # Hard 4xx error
+                logger.error("Hard error on model %s: %s", model, e)
+                return f"System error: {e}"
 
-        except requests.exceptions.Timeout:
-            logger.warning("Timeout on attempt %d/%d", attempt + 1, retries + 1)
-            last_error = "Timeout"
+            except requests.exceptions.Timeout:
+                logger.warning("Timeout — model %s attempt %d/%d", model, attempt + 1, MAX_RETRIES + 1)
 
-        except requests.exceptions.RequestException as e:
-            logger.warning("Request failed on attempt %d/%d: %s", attempt + 1, retries + 1, e)
-            last_error = str(e)
+            except requests.exceptions.RequestException as e:
+                logger.warning("Request error — model %s attempt %d/%d: %s", model, attempt + 1, MAX_RETRIES + 1, e)
 
-        if attempt < retries:
-            wait = 2 ** attempt  # 1s, 2s, 4s
-            logger.info("Retrying in %ds...", wait)
-            time.sleep(wait)
+            if attempt < MAX_RETRIES:
+                wait = 2 ** attempt
+                logger.info("Retrying model %s in %ds...", model, wait)
+                time.sleep(wait)
 
-    return f"System error: Node disconnected after {retries + 1} attempts. Last error: {last_error}"
+    return "System error: All models exhausted. Check your Gemini quota at https://ai.dev/rate-limit"
 
 
 # ---------------------------------------------------------------------------
