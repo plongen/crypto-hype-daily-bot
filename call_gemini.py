@@ -22,7 +22,7 @@ MODEL_FALLBACK_CHAIN = [
 
 MAX_RETRIES = 2
 REQUEST_TIMEOUT = 30
-MAX_OUTPUT_TOKENS = 320
+MAX_OUTPUT_TOKENS = 600  # ~270 chars needs ~150 tokens; 600 gives breathing room
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -92,8 +92,10 @@ def _build_single_prompt(news_set: list, persona: dict, extra_instruction: str =
         f"- FORBIDDEN WORDS: {forbidden_str}\n"
         f"- Write for someone who has read Taleb, traded through a crash, and "
         f"distrusts anyone still using the word 'ecosystem'\n"
+        f"- DO NOT repeat or paraphrase the headlines — extract the subtext, the implication, the trap\n"
+        f"- Every sentence must be YOUR analysis, not a summary of the news\n"
         f"{extra_instruction}\n"
-        f"Output ONLY the post text. Nothing else."
+        f"Think carefully before writing. Output ONLY the final post text. Nothing else."
     )
 
 
@@ -110,7 +112,7 @@ def _build_echo_prompt(sample: list) -> str:
         f"- Format exactly: 'Quote text' — Author\n"
         f"- Max 200 chars\n"
         f"- No intro, no commentary, no emojis\n"
-        f"Output ONLY the formatted quote."
+        f"Think carefully about the subtext before choosing. Output ONLY the formatted quote."
     )
 
 
@@ -134,6 +136,25 @@ def _parse_retry_after(error_msg: str) -> float:
     return float(match.group(1)) if match else 0.0
 
 
+
+def _clean_output(text: str, max_chars: int = 270) -> str:
+    """
+    Strips wrapper artifacts and enforces character limit cleanly.
+    Cuts at the last complete sentence within the limit.
+    """
+    text = text.strip().strip('"\'`')  # remove wrapping quotes/backticks
+    if len(text) <= max_chars:
+        return text
+    # Cut at last sentence boundary within limit
+    truncated = text[:max_chars]
+    for sep in (". ", "! ", "? ", ".
+"):
+        idx = truncated.rfind(sep)
+        if idx > max_chars // 2:  # only cut if we keep at least half
+            return truncated[:idx + 1]
+    return truncated  # fallback: hard cut
+
+
 def _call_model(prompt: str, model: str) -> str | None:
     """
     Single attempt on one model.
@@ -153,7 +174,7 @@ def _call_model(prompt: str, model: str) -> str | None:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "maxOutputTokens": MAX_OUTPUT_TOKENS,
-            "temperature": 0.92,
+            "temperature": 1.0,
         },
     }
 
@@ -168,7 +189,8 @@ def _call_model(prompt: str, model: str) -> str | None:
 
     if r.ok:
         data = r.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        return _clean_output(text)
 
     try:
         error_msg = r.json().get("error", {}).get("message", r.text[:300])
